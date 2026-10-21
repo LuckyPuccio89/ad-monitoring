@@ -1,0 +1,68 @@
+# 05-prometheus-ad.yml
+# Frammento da inserire nel prometheus.yml del container Prometheus sul DC.
+# Monta il file in /etc/prometheus/ (o aggiungi a prometheus.yml) e riavvia il container.
+
+scrape_configs:
+  # ---------------------------------------------------------------
+  # Active Directory - collector PowerShell sul DC
+  # ---------------------------------------------------------------
+  - job_name: 'ad-dc'
+    scrape_interval: 60s
+    scrape_timeout: 20s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.10:9182']
+        labels:
+          instance_name: 'HOMELAB'
+          domain: 'example.lan'
+          role: 'domain-controller'
+
+  # ---------------------------------------------------------------
+  # Blackbox: verifica che i servizi AD rispondano (blackbox_exporter)
+  # Richiede che il container blackbox sia sulla stessa rete docker.
+  # ---------------------------------------------------------------
+  - job_name: 'ad-blackbox'
+    scrape_interval: 120s
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - '192.168.1.10:389'    # LDAP
+          - '192.168.1.10:636'    # LDAPS
+          - '192.168.1.10:3268'   # Global Catalog
+          - '192.168.1.10:88'     # Kerberos KDC
+          - '192.168.1.10:464'    # Kerberos password change
+          - '192.168.1.10:53'     # DNS
+          - '192.168.1.10:445'    # SMB / SYSVOL
+          - '192.168.1.10:5985'   # WinRM HTTP
+          - '192.168.1.10:5986'   # WinRM HTTPS
+          - '192.168.1.10:9389'   # ADWS
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # ---------------------------------------------------------------
+  # Blackbox: DNS resolutione degli SRV record del dominio
+  # ---------------------------------------------------------------
+  - job_name: 'ad-dns-blackbox'
+    scrape_interval: 300s
+    metrics_path: /probe
+    params:
+      module: [dns]
+    static_configs:
+      - targets:
+          - '_ldap._tcp.dc._msdcs.example.lan'
+          - '_kerberos._tcp.example.lan'
+          - '_kerberos._tcp.dc._msdcs.example.lan'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

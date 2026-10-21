@@ -1,0 +1,885 @@
+apiVersion: 1
+groups:
+- orgId: 1
+  name: ad-availability
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-target-down
+    title: 'AD: collector non raggiungibile'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: up{job="ad-dc"}
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 3m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: Prometheus non riesce a scrapare l'exporter AD
+      description: 'up{job="ad-dc"} è 0 da 3 minuti: verificare ad-monitor.service e la rete Docker.'
+    isPaused: false
+  - uid: ad-collector-failed
+    title: 'AD: raccolta fallita'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_collector_success
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: NoData
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: L'ultimo giro di raccolta ha avuto errori
+      description: 'Una o più sezioni del collector sono fallite: vedere ad_collector_section_ok e il NOTE nel payload.'
+    isPaused: false
+  - uid: ad-collector-stale
+    title: 'AD: metriche non aggiornate'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: time() - ad_collector_last_run_timestamp_seconds
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 180
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: L'ultima raccolta risale a più di 3 minuti
+      description: 'Il collector è fermo o bloccato: systemctl status ad-monitor e journalctl -u ad-monitor.'
+    isPaused: false
+  - uid: ad-collector-partial
+    title: 'AD: raccolta parziale'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_collector_partial_errors
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: NoData
+    execErrState: Alerting
+    for: 10m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: Più sezioni di raccolta falliscono
+      description: 'Degrado parziale ma persistente: controllare identity, directory e dns nel pannello sezioni.'
+    isPaused: false
+- orgId: 1
+  name: ad-services
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-samba-down
+    title: 'AD: samba-ad-dc non attivo'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_dc_service_active{service="samba-ad-dc"}
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 2m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: Il servizio Samba AD non è attivo
+      description: 'Il DC non eroga LDAP/KDC: impatto immediato su tutto il dominio. Verificare e riavviare con cautela.'
+    isPaused: false
+  - uid: ad-named-down
+    title: 'AD: named (DNS) non attivo'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_dc_service_active{service="named"}
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: BIND non è attivo
+      description: 'La risoluzione DNS del dominio e dei client è compromessa: verificare named e i log.'
+    isPaused: false
+- orgId: 1
+  name: ad-directory
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-accounts-locked
+    title: 'AD: molti account bloccati'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_directory_users_locked
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 2
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: OK
+    execErrState: Alerting
+    for: 10m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: Numero anomalo di account bloccati
+      description: Possibile attacco a forza bruta o password scadute su più postazioni. Controllare top sorgenti auth.
+    isPaused: false
+  - uid: ad-group-membership-change
+    title: 'AD: gruppo privilegiato modificato'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: abs(delta(ad_group_members[6h]))
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: OK
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: Membri di un gruppo privilegiato cambiati nelle ultime 6 ore
+      description: Verificare che la modifica sia autorizzata (Domain/Enterprise/Schema Admins e affini).
+    isPaused: false
+- orgId: 1
+  name: ad-auth
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-auth-failure-spike
+    title: 'AD: picco di autenticazioni fallite'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_auth_failures_1h
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 20
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: OK
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: Oltre 20 fallimenti di autenticazione nell'ultima ora
+      description: Soglia tarata su un dominio piccolo. Verificare account e IP sorgente nel pannello autenticazione.
+    isPaused: false
+  - uid: ad-auth-source-burst
+    title: 'AD: molti eventi da una sola sorgente'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: max(ad_auth_failures_by_source_1h)
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 10
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: OK
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: Una singola sorgente supera 10 eventi di autenticazione in un'ora
+      description: 'Possibile brute force da un host: identificare l''IP e isolarlo se non atteso.'
+    isPaused: false
+- orgId: 1
+  name: ad-dns
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-srv-missing
+    title: 'AD: record SRV non risolvibile'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: min(ad_dns_srv_ok)
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: Manca almeno un record SRV LDAP/Kerberos
+      description: 'I client non trovano il DC: verificare le zone _tcp e _msdcs sul DNS.'
+    isPaused: false
+  - uid: ad-zone-serial-unavailable
+    title: 'AD: serial DNS non leggibile'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: min(ad_dns_zone_serial)
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 10m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: Il serial SOA di una zona chiave non è leggibile
+      description: 'dig SOA non risponde per example.lan o _msdcs: verificare BIND e la zona.'
+    isPaused: false
+- orgId: 1
+  name: ad-health
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-dbcheck-errors
+    title: 'AD: errori dbcheck'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_dbcheck_errors
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 0
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: OK
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: samba-tool dbcheck riporta errori
+      description: Eseguire samba-tool dbcheck --cross-ncs -v e valutare un intervento pianificato.
+    isPaused: false
+  - uid: ad-dbcheck-stale
+    title: 'AD: dbcheck non eseguito'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: time() - ad_dbcheck_last_run_timestamp_seconds
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 691200
+            type: gt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 1h
+    labels:
+      severity: warning
+      domain: example.lan
+    annotations:
+      summary: dbcheck non viene eseguito da più di 8 giorni
+      description: Verificare ad-dbcheck.timer e ad-dbcheck.service.
+    isPaused: false
+  - uid: ad-sysvol-unavailable
+    title: 'AD: SYSVOL non disponibile'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_sysvol_share_ok
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 1
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: Alerting
+    execErrState: Alerting
+    for: 5m
+    labels:
+      severity: critical
+      domain: example.lan
+    annotations:
+      summary: SYSVOL non accessibile o SMB non risponde
+      description: Group Policy e script di logon non vengono distribuiti. Verificare smbd e /var/lib/samba/sysvol.
+    isPaused: false
+- orgId: 1
+  name: ad-structural
+  folder: Active Directory
+  interval: 60s
+  rules:
+  - uid: ad-single-dc
+    title: 'AD: un solo domain controller'
+    condition: C
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: dg13jav59r8cgd
+      model:
+        editorMode: code
+        expr: ad_domain_controllers
+        instant: true
+        range: false
+        intervalMs: 60000
+        maxDataPoints: 43200
+        legendFormat: __auto
+        refId: A
+    - refId: C
+      datasourceUid: __expr__
+      model:
+        conditions:
+        - evaluator:
+            params:
+            - 2
+            type: lt
+          operator:
+            type: and
+          query:
+            params:
+            - A
+          reducer:
+            params: []
+            type: last
+          type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: A
+        intervalMs: 60000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    noDataState: OK
+    execErrState: Alerting
+    for: 24h
+    labels:
+      severity: info
+      domain: example.lan
+    annotations:
+      summary: La foresta non ha ridondanza
+      description: 'Rischio strutturale accettato: un guasto HW del DC causa un outage completo del dominio.'
+    isPaused: false

@@ -1,0 +1,263 @@
+# 06-ad-alert-rules.yml
+# Alert rules Prometheus per il dominio example.lan.
+# Montare in /etc/prometheus/ e referenziare in prometheus.yml:
+#   rule_files:
+#     - /etc/prometheus/ad-alert-rules.yml
+groups:
+  - name: ad-availability
+    interval: 60s
+    rules:
+      - alert: ADCollectorDown
+        expr: up{job="ad-dc"} == 0
+        for: 5m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Collector AD non raggiungibile"
+          description: "Prometheus non riesce a raccogliere metriche dal collector AD su 192.168.1.10:9182 da 5 minuti."
+
+      - alert: ADCollectorFailed
+        expr: ad_collector_success == 0
+        for: 5m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Raccolta metriche AD fallita"
+          description: "Il collector sul DC ha completato l'ultimo run con errori."
+
+      - alert: ADCollectorStale
+        expr: time() - ad_collector_last_run_timestamp_seconds > 300
+        for: 5m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Metriche AD non aggiornate"
+          description: "L'ultima raccolta risale a più di 5 minuti fa."
+
+      - alert: ADDomainControllerDown
+        expr: ad_domain_controller_status == 0
+        for: 5m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Domain controller DOWN: {{ $labels.instance }}"
+          description: "Il DC {{ $labels.instance }} (sito {{ $labels.site }}) non risulta operativo."
+
+      - alert: ADCoreServiceStopped
+        expr: ad_dc_service_state == 0
+        for: 3m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Servizio AD fermo: {{ $labels.service }}"
+          description: "Il servizio {{ $labels.service }} su {{ $labels.instance }} non è in esecuzione da 3 minuti."
+
+      - alert: ADCoreServiceStoppedWarning
+        expr: ad_dc_service_state == 0 and on(instance) ad_dc_service_state{service=~"WinRM"} == 0
+        for: 3m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "WinRM fermo su {{ $labels.instance }}"
+          description: "WinRM e' fermo: il monitoraggio remoto del DC non e' piu' disponibile."
+
+  - name: ad-replication
+    interval: 60s
+    rules:
+      - alert: ADReplicationFailed
+        expr: ad_replication_failed == 1
+        for: 10m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Replicazione AD fallita verso {{ $labels.destination }}"
+          description: "Replica {{ $labels.partition }} da {{ $labels.source }} a {{ $labels.destination }} fallita da 10 minuti."
+
+      - alert: ADReplicationConsecutiveFailures
+        expr: ad_replication_consecutive_failures >= 3
+        for: 5m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "{{ $labels.consecutive_failures }} fallimenti consecutivi verso {{ $labels.destination }}"
+          description: "Partner di replica {{ $labels.source }} verso {{ $labels.destination }} ({{ $labels.partition }})."
+
+      - alert: ADReplicationLagHigh
+        expr: ad_replication_lag_seconds > 14400
+        for: 15m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Lag replica > 4h verso {{ $labels.destination }}"
+          description: "La replica {{ $labels.partition }} verso {{ $labels.destination }} ha un lag di {{ $value }}s."
+
+      - alert: ADReplicationLagWarning
+        expr: ad_replication_lag_seconds > 3600
+        for: 15m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Lag replica > 1h verso {{ $labels.destination }}"
+          description: "La replica {{ $labels.partition }} verso {{ $labels.destination }} ha un lag di {{ $value }}s."
+
+      - alert: ADReplicationFailureReported
+        expr: ad_replication_failure == 1
+        for: 15m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Get-ADReplicationFailure: {{ $labels.reason }}"
+          description: "Errore di replica su {{ $labels.object }}."
+
+  - name: ad-dns-kerberos
+    interval: 60s
+    rules:
+      - alert: ADDnsErrors
+        expr: ad_events_dns_error_1h > 0
+        for: 10m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Errori DNS Server rilevati"
+          description: "{{ $value }} errori nel log DNS Server nell'ultima ora."
+
+      - alert: ADKerberosErrors
+        expr: ad_events_ticket_1h > 5
+        for: 10m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Errori ticket Kerberos"
+          description: "{{ $value }} errori Kerberos nell'ultima ora."
+
+      - alert: ADDnsZoneSerialStuck
+        expr: changes(ad_dns_zone_serial[30m]) == 0
+        for: 6h
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Serial DNS {{ $labels.zone }} non aggiornato da 6h"
+          description: "Verificare la zona e il servizio DNS Server."
+
+  - name: ad-security
+    interval: 60s
+    rules:
+      - alert: ADFailedLogonSpike
+        expr: ad_events_failed_logon_1h > 50
+        for: 10m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Picco di logon falliti"
+          description: "{{ $value }} logon falliti nell'ultima ora su {{ $labels.instance }}."
+
+      - alert: ADFailedLogonWarning
+        expr: ad_events_failed_logon_1h > 10
+        for: 30m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Logon falliti sopra soglia"
+          description: "{{ $value }} logon falliti nell'ultima ora su {{ $labels.instance }}."
+
+      - alert: ADAccountLockoutSpike
+        expr: ad_events_account_lockout_1h > 3
+        for: 10m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Account lockout anomali"
+          description: "{{ $value }} lockout nell'ultima ora su {{ $labels.instance }}."
+
+      - alert: ADDirectoryServiceErrors
+        expr: ad_events_ds_error_1h > 0
+        for: 10m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Errori nel log Directory Service"
+          description: "{{ $value }} errori DS nell'ultima ora su {{ $labels.instance }}."
+
+      - alert: ADReplicationErrorEvents
+        expr: ad_events_replication_error_1h > 0
+        for: 10m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Errori di replica nel log Directory Service"
+          description: "{{ $value }} errori di replica nell'ultima ora su {{ $labels.instance }}."
+
+      - alert: ADPrivilegedAccountAddedToGroup
+        expr: ad_events_group_add_1h > 0
+        for: 1m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Membro aggiunto a un gruppo globale"
+          description: "Evento 4728 rilevato su {{ $labels.instance }}: verificare che sia autorizzato."
+
+      - alert: ADLockedAccountsHigh
+        expr: ad_directory_locked_users > 5
+        for: 15m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "{{ $value }} account bloccati"
+          description: "Numero elevato di account bloccati: possibile attacco brute force."
+
+  - name: ad-health
+    interval: 60s
+    rules:
+      - alert: ADDcdiagFailures
+        expr: ad_dcdiag_failures > 0
+        for: 30m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "dcdiag: {{ $value }} check falliti"
+          description: "Eseguire dcdiag /e /c /v sul DC {{ $labels.instance }}."
+
+      - alert: ADDcDiagCritical
+        expr: ad_dcdiag_failures > 3
+        for: 15m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "dcdiag: {{ $value }} check falliti (critico)"
+          description: "Guasti importanti rilevati su {{ $labels.instance }}."
+
+      - alert: ADVolumeLowSpace
+        expr: ad_volume_free_ratio < 0.2
+        for: 15m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Spazio libero insufficiente su {{ $labels.volume }}"
+          description: "Solo {{ $value | humanizePercentage }} libero."
+
+      - alert: ADVolumeLowSpaceWarning
+        expr: ad_volume_free_ratio < 0.3 and ad_volume_free_ratio >= 0.2
+        for: 30m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Spazio libero in esaurimento su {{ $labels.volume }}"
+          description: "{{ $value | humanizePercentage }} libero."
+
+      - alert: ADNtdsDitGrowing
+        expr: ad_ntds_dit_size_bytes > 1610612736
+        for: 30m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "ntds.dit oltre 1,5 GB"
+          description: "Valutare il deframmentazione o l'aumento del volume di sistema."
+
+      - alert: ADLdapBindSlow
+        expr: ad_dc_ldap_bind_duration_seconds > 0.2
+        for: 10m
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Bind LDAP lento ({{ $value }}s)"
+          description: "Latenza di bind anomala su {{ $labels.instance }}."
+
+      - alert: ADSingleDomainController
+        expr: ad_domain_controller_count < 2
+        for: 1h
+        labels: { severity: warning, domain: example.lan }
+        annotations:
+          summary: "Foresta con un solo domain controller"
+          description: "Nessuna ridondanza per LDAP/KDC/DNS/Global Catalog: SPOF e outage su guasto HW."
+
+  - name: ad-exporter-selfcheck
+    interval: 60s
+    rules:
+      - alert: AdBlackboxServiceDown
+        expr: probe_success{job="ad-blackbox"} == 0
+        for: 5m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Servizio AD non raggiungibile: {{ $labels.instance }}"
+          description: "La porta {{ $labels.instance }} non risponde dal blackbox exporter."
+
+      - alert: AdDnsRecordMissing
+        expr: probe_success{job="ad-dns-blackbox"} == 0
+        for: 10m
+        labels: { severity: critical, domain: example.lan }
+        annotations:
+          summary: "Record DNS SRV non risolvibile: {{ $labels.instance }}"
+          description: "Il record SRV {{ $labels.instance }} non risolve."

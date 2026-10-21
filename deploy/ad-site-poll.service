@@ -1,0 +1,9 @@
+[Unit]
+Description=Publish sanitized AD snapshot (api/ad.json) for the portfolio site
+After=network.target prometheus.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/ad-monitoring/tools/site-poll.py --out /var/www/html/api/ad.json
+StandardOutput=append:/var/log/ad-site-poll.log
+StandardError=append:/var/log/ad-site-poll.log

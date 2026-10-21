@@ -1,0 +1,59 @@
+global:
+  scrape_interval: 30s
+
+scrape_configs:
+  - job_name: 'zentyal'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Active Directory (Samba AD DC su questo host) — collector nativo /opt/ad-monitoring
+  - job_name: 'ad-dc'
+    scrape_interval: 60s
+    scrape_timeout: 20s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['172.19.0.1:9182']
+        labels:
+          role: 'domain-controller'
+          platform: 'samba'
+
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params: {module: [http_2xx]}
+    static_configs:
+      - targets: ['http://192.168.1.10/']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # Porte realmente in ascolto sul DC (verificato 2026-10-21).
+  # 5985/5986/9389/9182 sono chiuse su 192.168.1.10 e non vanno probe-ate qui.
+  - job_name: 'ad-blackbox'
+    scrape_interval: 120s
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - '192.168.1.10:53'    # DNS
+          - '192.168.1.10:88'    # Kerberos KDC
+          - '192.168.1.10:389'   # LDAP
+          - '192.168.1.10:636'   # LDAPS
+          - '192.168.1.10:445'   # SMB / SYSVOL
+          - '192.168.1.10:464'   # Kerberos password change
+          - '192.168.1.10:3268'  # Global Catalog
+          - '192.168.1.10:3269'  # Global Catalog SSL
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: 'firewall'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['172.19.0.1:9101']

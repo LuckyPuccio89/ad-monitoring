@@ -1,0 +1,12 @@
+# Rotazione del log Samba usato dall'exporter AD (auth_audit JSON).
+# Samba tiene il file aperto: copytruncate evita di dover riavviare samba-ad-dc.
+/var/log/samba/samba.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}

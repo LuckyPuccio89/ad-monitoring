@@ -1,0 +1,12 @@
+apiVersion: 1
+providers:
+  - name: 'active-directory'
+    orgId: 1
+    folder: 'Active Directory'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards-ad
+      foldersFromFilesStructure: false

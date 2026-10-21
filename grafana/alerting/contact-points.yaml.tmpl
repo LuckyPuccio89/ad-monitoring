@@ -1,0 +1,25 @@
+apiVersion: 1
+
+# Contact point email. L'indirizzo viene sostituito da deploy-alerting.sh
+# leggendo /etc/ad-monitoring/smtp.env (ALERT_EMAIL). Le credenziali SMTP
+# stanno in /etc/grafana/grafana.ini, sezione [smtp], gestita da apply-smtp.py.
+contactPoints:
+  - orgId: 1
+    name: email-ad
+    receivers:
+      - uid: email-ad
+        type: email
+        settings:
+          addresses: "__ALERT_EMAIL__"
+          singleEmail: true
+          subject: |
+            [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} — AD example.lan
+          message: |
+            {{ range .Alerts }}
+            Alert: {{ .Labels.alertname }} ({{ .Labels.severity }})
+            Sorgente: {{ .Labels.dc }}
+            Riepilogo: {{ .Annotations.summary }}
+            Dettaglio: {{ .Annotations.description }}
+            Inizio: {{ .StartsAt }}
+            {{ end }}
+        disableResolveMessage: false

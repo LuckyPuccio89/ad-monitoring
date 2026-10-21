@@ -1,0 +1,13 @@
+apiVersion: 1
+providers:
+  - name: 'AD'
+    orgId: 1
+    folder: 'Homelab'
+    folderUid: 'fg1owjwmlhu68f'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/ad
+      foldersFromFilesStructure: false

@@ -1,0 +1,16 @@
+[Unit]
+Description=Read-only Samba AD database check (dbcheck) for ad-monitor
+Documentation=file:///opt/ad-monitoring/docs/RUNBOOK.md
+After=samba-ad-dc.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/ad-monitoring/ad-dbcheck.py
+User=root
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=full
+ReadOnlyPaths=/etc/samba
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SyslogIdentifier=ad-dbcheck

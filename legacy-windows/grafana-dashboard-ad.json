@@ -1,0 +1,564 @@
+{
+  "uid": "active-directory",
+  "title": "Active Directory — example.lan",
+  "description": "Monitoraggio Active Directory: domain controller, replicazione, DNS, Kerberos, eventi di sicurezza e storage. Sorgente: collector PowerShell sul DC (job Prometheus `ad-dc`).",
+  "tags": ["active-directory", "example.lan", "homelab"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["10s", "30s", "1m", "5m", "15m"] },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "prometheus", "value": "dg13jav59r8cgd" },
+        "hide": 0
+      },
+      {
+        "name": "instance",
+        "label": "Domain Controller",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+        "query": "label_values(ad_dc_up, instance)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "options": []
+      },
+      {
+        "name": "site",
+        "label": "Sito AD",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+        "query": "label_values(ad_dc_up, site)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "options": []
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Deploy/change",
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "tags": ["deploy"],
+        "target": { "expr": "", "refId": "Anno" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Panoramica dominio",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "DC raggiungibile",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "ad_dc_up{instance=~\"$instance\",site=~\"$site\"}", "refId": "A", "legendFormat": "{{instance}}" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Lag replica max",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 3600 }, { "color": "red", "value": 14400 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_replication_lag_seconds{instance=~\"$instance\",site=~\"$site\"})", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Repliche fallite",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(ad_replication_failed{instance=~\"$instance\",site=~\"$site\"})", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Logon falliti (1h)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_events_failed_logon_1h{instance=~\"$instance\",site=~\"$site\"})", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Errori Directory Service (1h)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_events_ds_error_1h{instance=~\"$instance\",site=~\"$site\"})", "refId": "A" }]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Check dcdiag falliti",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_dcdiag_failures{instance=~\"$instance\"})", "refId": "A" }]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Account bloccati",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 10 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_directory_locked_users)", "refId": "A" }]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Utenti privilegiati (adminCount)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 15 }] },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_directory_privileged_users)", "refId": "A" }]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "DC nella foresta",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 5 },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 2 }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_domain_controller_count)", "refId": "A" }]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Collector AD",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "FAIL", "color": "red" }, "1": { "text": "OK", "color": "green" } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_collector_success)", "refId": "A" }]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Età dell'ultimo sync replica",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 3600 }, { "color": "red", "value": 14400 }] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "targets": [{ "expr": "max(ad_replication_last_sync_timestamp_seconds) and on() (time() - max(ad_replication_last_sync_timestamp_seconds))", "refId": "A" }]
+    },
+    {
+      "id": 200,
+      "type": "row",
+      "title": "Replicazione",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Lag replica per partner (s)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never", "spanNulls": true },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 3600 }, { "color": "red", "value": 14400 }] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "expr": "ad_replication_lag_seconds{instance=~\"$instance\",site=~\"$site\"}", "legendFormat": "{{destination}} ← {{source}}  ({{partition}})", "refId": "A" }]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Tempo dall'ultimo sync (s)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never", "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "expr": "time() - ad_replication_last_sync_timestamp_seconds{instance=~\"$instance\",site=~\"$site\"}", "legendFormat": "{{destination}}", "refId": "A" }]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Fallimenti replica consecutivi",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 18 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_replication_consecutive_failures{instance=~\"$instance\",site=~\"$site\"} > 0", "legendFormat": "{{destination}}", "refId": "A" }]
+    },
+    {
+      "id": 15,
+      "type": "table",
+      "title": "Stato replicazione (partizioni)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 18 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true } }, "overrides": [] },
+      "options": { "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Value" }] },
+      "targets": [
+        {
+          "expr": "ad_replication_lag_seconds{instance=~\"$instance\",site=~\"$site\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 300,
+      "type": "row",
+      "title": "Domain controller e servizi",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Servizi Windows critici sul DC",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 20, "showPoints": "never" },
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }]
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_dc_service_state{instance=~\"$instance\",site=~\"$site\"}", "legendFormat": "{{instance}} / {{service}}", "refId": "A" }]
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "Inventario domain controller",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true } }, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [{ "expr": "ad_domain_controller_status", "format": "table", "instant": true, "refId": "A" }]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Latenza bind LDAP (s)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.05 }, { "color": "red", "value": 0.2 }] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_dc_ldap_bind_duration_seconds{instance=~\"$instance\",site=~\"$site\"}", "legendFormat": "{{instance}}", "refId": "A" }]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Serial SOA zone DNS",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_dns_zone_serial", "legendFormat": "{{zone}}", "refId": "A" }]
+    },
+    {
+      "id": 400,
+      "type": "row",
+      "title": "Oggetti di directory",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Conteggio oggetti AD",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 39 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "ad_directory_users", "legendFormat": "utenti", "refId": "A" },
+        { "expr": "ad_directory_computers", "legendFormat": "computer", "refId": "B" },
+        { "expr": "ad_directory_groups", "legendFormat": "gruppi", "refId": "C" },
+        { "expr": "ad_directory_ous", "legendFormat": "OU", "refId": "D" }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Account disabilitati / bloccati / privilegiati",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 39 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "ad_directory_privileged_users", "legendFormat": "privilegiati", "refId": "A" },
+        { "expr": "ad_directory_locked_users", "legendFormat": "bloccati", "refId": "B" },
+        { "expr": "ad_directory_disabled_users", "legendFormat": "disabilitati", "refId": "C" }
+      ]
+    },
+    {
+      "id": 500,
+      "type": "row",
+      "title": "Sicurezza e eventi",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 46 },
+      "panels": []
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Logon falliti (4625)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 47 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_events_failed_logon_1h{instance=~\"$instance\",site=~\"$site\"}", "legendFormat": "{{instance}}", "refId": "A" }]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Top IP con logon falliti",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 47 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "sum by (ip) (rate(ad_failed_logon_source_total[30m]))", "legendFormat": "{{ip}}", "refId": "A" }]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Eventi privilegiati e di gruppo",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 47 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "ad_events_privileged_1h{instance=~\"$instance\"}", "legendFormat": "4672 special privileges", "refId": "A" },
+        { "expr": "ad_events_group_add_1h{instance=~\"$instance\"}", "legendFormat": "4728 member added to group", "refId": "B" },
+        { "expr": "ad_events_account_lockout_1h{instance=~\"$instance\"}", "legendFormat": "4740 lockout", "refId": "C" }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Errori Kerberos / ticket",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 54 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "ad_events_ticket_1h{instance=~\"$instance\"}", "legendFormat": "ticket errors", "refId": "A" },
+        { "expr": "ad_events_kerberos_service_1h{instance=~\"$instance\"}", "legendFormat": "service ticket errors", "refId": "B" }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Errori replicazione (Directory Service log)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 54 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_events_replication_error_1h{instance=~\"$instance\"}", "legendFormat": "135/136/1450/2159", "refId": "A" }]
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "Errori DNS",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 54 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_events_dns_error_1h{instance=~\"$instance\"}", "legendFormat": "DNS server errors", "refId": "A" }]
+    },
+    {
+      "id": 600,
+      "type": "row",
+      "title": "Storage e collector",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 60 },
+      "panels": []
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "Spazio libero per volume",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 61 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 0.2 }, { "color": "green", "value": 0.3 }] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_volume_free_ratio", "legendFormat": "{{volume}}", "refId": "A" }]
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Dimensione ntds.dit",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 61 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_ntds_dit_size_bytes", "legendFormat": "ntds.dit", "refId": "A" }]
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Durata raccolta collector (s)",
+      "datasource": { "type": "prometheus", "uid": "dg13jav59r8cgd" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 61 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "ad_collector_duration_seconds", "legendFormat": "duration", "refId": "A" }]
+    },
+    {
+      "id": 31,
+      "type": "text",
+      "title": "Soglie / note operative",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 67 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Soglie di riferimento**\n\n| Metrica | Ok | Warning | Critico |\n|---|---|---|---|\n| Lag replica (intra-sito) | < 1 h | > 1 h | > 4 h |\n| Lag replica (intersito) | < 4 h | > 4 h | > 24 h |\n| Errori Directory Service /Replication | 0 | > 0 | > 5 in 1 h |\n| Logon falliti | < 10/h | > 10/h | > 50/h |\n| dcdiag check falliti | 0 | 1 | 3 |\n| Spazio libero volume | > 30% | 20-30% | < 20% |\n| ntds.dit | < 1 GB | 1-1,5 GB | > 1,5 GB |\n| Bind LDAP | < 50 ms | > 50 ms | > 200 ms |\n\n**Azioni**\n- Replica rotta: `repadmin /repl /replicas <DC> /force` e verificare `repadmin /replsummary`\n- DC isolato: verificare firewall su 389/636/3268/3269/88/464 e il sito in `CN=Sites,CN=Configuration,DC=home-pucci,DC=lan`\n- SYSVOL: `dcdiag /test:sysvol` e `dfsradmin replication`\n- FSMO: `Get-ADDomainController | Select-Object *Master*`"
+      }
+    }
+  ]
+}

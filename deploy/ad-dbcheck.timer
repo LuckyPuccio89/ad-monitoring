@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly Samba AD dbcheck for ad-monitor
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+RandomizedDelaySec=600
+Unit=ad-dbcheck.service
+
+[Install]
+WantedBy=timers.target
